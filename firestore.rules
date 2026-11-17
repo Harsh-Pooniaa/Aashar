@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidAppointment() {
+      return request.resource.data.keys().hasAll(['patientName', 'doctor', 'appointmentDate', 'appointmentTime'])
+        && request.resource.data.patientName is string
+        && request.resource.data.patientName.size() > 0;
+    }
+
+    function isValidDispatch() {
+      return request.resource.data.keys().hasAll(['patientName', 'phone', 'location'])
+        && request.resource.data.patientName is string
+        && request.resource.data.location.size() > 0;
+    }
+
+    // Appointments collection: Public can submit appointments and view bookings
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow create: if isValidAppointment();
+      allow update, delete: if true; // In production, restrict to authenticated admin users
+    }
+
+    // Emergency Dispatches: Allows urgent ambulance dispatches
+    match /emergency_dispatches/{dispatchId} {
+      allow read: if true;
+      allow create: if isValidDispatch();
+      allow update, delete: if true;
+    }
+
+    // AI & User chat session logs
+    match /dispatch_chat_logs/{logId} {
+      allow read, write: if true;
+    }
+  }
+}
